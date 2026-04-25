@@ -1,0 +1,69 @@
+# -----------------------------
+# 🌐 Core App
+# -----------------------------
+streamlit
+requests
+python-dotenv
+
+# -----------------------------
+# 🧠 LLM (Groq + LangChain)
+# -----------------------------
+langchain
+langchain-core
+langchain-community
+langchain-groq
+
+# -----------------------------
+# 🤖 Hugging Face / VLM
+# -----------------------------
+transformers>=4.40.0
+accelerate>=0.30.0
+huggingface-hub>=0.23.0
+
+# -----------------------------
+# 👁️ Computer Vision
+# -----------------------------
+opencv-python-headless>=4.9.0.80
+pillow
+numpy
+
+# YOLO (Ultralytics)
+ultralytics>=8.2.0
+
+# -----------------------------
+# 🧠 Deep Learning (for GNN + segmentation)
+# -----------------------------
+torch
+torchvision
+
+# -----------------------------
+# 🔗 Graph Processing
+# -----------------------------
+networkx
+
+# -----------------------------
+# 🔤 OCR
+# -----------------------------
+pytesseract
+
+# -----------------------------
+# 📊 Data Handling
+# -----------------------------
+pandas
+
+# -----------------------------
+# ⚡ Utilities
+# -----------------------------
+tqdm
+scipy
+
+# -----------------------------
+# 🧪 Optional (recommended)
+# -----------------------------
+matplotlib
+seaborn
+
+# -----------------------------
+# 🚀 Performance / Compatibility
+# -----------------------------
+typing-extensions
