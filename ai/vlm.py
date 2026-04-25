@@ -1,132 +1,212 @@
 import requests
 import streamlit as st
 import base64
-import json
 import time
+import json
+import re
+from typing import Optional, Dict
+
 
 # ----------------------------------------
 # 🔐 CONFIG
 # ----------------------------------------
-HF_API_URL = st.secrets.get("HF_API_URL", "")
-HF_API_TOKEN = st.secrets.get("HF_API_TOKEN", None)
+HF_API_TOKEN = st.secrets.get("HF_API_TOKEN", "")
+HF_API_URL = st.secrets.get("HF_API_URL", "")  # optional (Space API)
 
-HEADERS = {}
-if HF_API_TOKEN:
-    HEADERS["Authorization"] = f"Bearer {HF_API_TOKEN}"
+# Default → LLaVA model endpoint
+DEFAULT_MODEL_URL = "https://api-inference.huggingface.co/models/llava-hf/llava-1.5-7b-hf"
+
+HEADERS = {
+    "Authorization": f"Bearer {HF_API_TOKEN}"
+} if HF_API_TOKEN else {}
 
 
 # ----------------------------------------
-# 🧠 HELPER: IMAGE → BASE64
+# 🧠 IMAGE → BASE64
 # ----------------------------------------
-def encode_image(image_path):
+def encode_image(image_path: str) -> str:
     with open(image_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
 
 # ----------------------------------------
-# 🧾 PARSE RESPONSE (ROBUST)
+# 🧾 RESPONSE PARSER
 # ----------------------------------------
-def parse_vlm_output(response_json):
+def parse_response(res):
+
     try:
-        # HF Spaces (Gradio) usually returns {"data": ["text output"]}
-        if isinstance(response_json, dict) and "data" in response_json:
-            return response_json["data"][0]
+        if isinstance(res, list):
+            return res[0].get("generated_text", str(res))
 
-        # Direct model response
-        if isinstance(response_json, list):
-            return response_json[0].get("generated_text", str(response_json))
+        if isinstance(res, dict):
+            return res.get("generated_text", str(res))
 
-        return str(response_json)
+        return str(res)
 
     except Exception:
-        return str(response_json)
+        return str(res)
 
 
 # ----------------------------------------
-# 🚀 CORE VLM CALL
+# 🔄 JSON EXTRACTION (OPTIONAL)
 # ----------------------------------------
-def call_vlm_api(image_bytes, prompt):
+def extract_json(text):
+
+    try:
+        return json.loads(text)
+    except:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except:
+                pass
+
+    return {"raw_output": text}
+
+
+# ----------------------------------------
+# 🚀 CORE API CALL (GENERIC)
+# ----------------------------------------
+def call_hf_api(url: str, payload: Dict, retries=3, wait=5):
+
+    for attempt in range(retries):
+
+        try:
+            response = requests.post(
+                url,
+                headers=HEADERS,
+                json=payload,
+                timeout=60
+            )
+
+            if response.status_code == 200:
+                return parse_response(response.json())
+
+            # Model loading case
+            if "loading" in response.text.lower():
+                time.sleep(wait)
+                continue
+
+            return f"Error {response.status_code}: {response.text}"
+
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(wait)
+            else:
+                return f"Exception: {str(e)}"
+
+
+# ----------------------------------------
+# 👁️ MAIN ANALYSIS (AUTO SELECT)
+# ----------------------------------------
+def analyze_image(image_path: str, prompt: Optional[str] = None):
+
+    if prompt is None:
+        prompt = DEFAULT_PROMPT()
+
+    # Prefer Space API if provided
+    if HF_API_URL:
+        return call_space_api(image_path, prompt)
+
+    # Else fallback to LLaVA API
+    return call_llava_api(image_path, prompt)
+
+
+# ----------------------------------------
+# 🧠 DEFAULT PROMPT
+# ----------------------------------------
+def DEFAULT_PROMPT():
+
+    return """
+    You are a PCB design expert.
+
+    Analyze this PCB image and identify:
+
+    - Routing density
+    - Trace congestion
+    - Signal integrity issues
+    - Power distribution problems
+    - Thermal hotspots
+    - Component placement issues
+
+    Provide detailed technical observations.
+    """
+
+
+# ----------------------------------------
+# 🚀 LLaVA API CALL
+# ----------------------------------------
+def call_llava_api(image_path: str, prompt: str):
+
+    image_b64 = encode_image(image_path)
 
     payload = {
         "inputs": {
-            "image": base64.b64encode(image_bytes).decode("utf-8"),
-            "prompt": prompt
+            "image": image_b64,
+            "text": prompt
         }
     }
 
-    try:
+    return call_hf_api(DEFAULT_MODEL_URL, payload)
+
+
+# ----------------------------------------
+# 🚀 HF SPACE API CALL (OPTIONAL)
+# ----------------------------------------
+def call_space_api(image_path: str, prompt: str):
+
+    with open(image_path, "rb") as f:
+        files = {"data": f}
+
         response = requests.post(
             HF_API_URL,
             headers=HEADERS,
-            json=payload,
+            files=files,
             timeout=60
         )
 
-        if response.status_code != 200:
-            return f"VLM API Error: {response.text}"
+    if response.status_code != 200:
+        return f"Space Error: {response.text}"
 
-        return parse_vlm_output(response.json())
+    try:
+        data = response.json()
 
-    except requests.exceptions.Timeout:
-        return "VLM Timeout Error"
-    except Exception as e:
-        return f"VLM Exception: {str(e)}"
+        if "data" in data:
+            return data["data"][0]
 
+        return str(data)
 
-# ----------------------------------------
-# 👁️ MAIN ANALYSIS FUNCTION
-# ----------------------------------------
-def analyze_image(image_path):
-
-    with open(image_path, "rb") as f:
-        image_bytes = f.read()
-
-    prompt = """
-    You are an expert PCB design analyst.
-
-    Analyze this PCB image and provide:
-    - Dense routing regions
-    - Trace congestion
-    - Possible signal issues
-    - Power distribution concerns
-    - Thermal hotspots
-    - Component placement anomalies
-
-    Output in structured bullet points.
-    """
-
-    return call_vlm_api(image_bytes, prompt)
+    except:
+        return response.text
 
 
 # ----------------------------------------
 # 🔄 MULTI-IMAGE (FRONT + BACK)
 # ----------------------------------------
-def analyze_front_back(front_path, back_path):
+def analyze_front_back(front_path: str, back_path: str):
 
     front = analyze_image(front_path)
     back = analyze_image(back_path)
 
-    combined_prompt = f"""
-    You are a PCB expert.
-
+    combined = f"""
     FRONT ANALYSIS:
     {front}
 
     BACK ANALYSIS:
     {back}
 
-    Combine insights:
+    Identify:
     - Cross-layer issues
     - Alignment problems
-    - Through-hole/via concerns
-    - Overall board health
+    - Via issues
+    - Overall PCB quality
     """
 
-    # Reuse LLM if needed later
     return {
         "front": front,
         "back": back,
-        "combined": combined_prompt
+        "combined": combined
     }
 
 
@@ -134,19 +214,19 @@ def analyze_front_back(front_path, back_path):
 # ⚡ CACHED VERSION (STREAMLIT)
 # ----------------------------------------
 @st.cache_data(show_spinner=False)
-def cached_vlm(image_path):
+def cached_vlm(image_path: str):
     return analyze_image(image_path)
 
 
 # ----------------------------------------
-# 🎯 ADVANCED STRUCTURED OUTPUT
+# 🎯 STRUCTURED OUTPUT WRAPPER
 # ----------------------------------------
-def structured_vlm_analysis(image_path):
+def structured_vlm_analysis(image_path: str):
 
     raw = analyze_image(image_path)
 
-    prompt = f"""
-    Convert this PCB vision analysis into structured JSON:
+    structured_prompt = f"""
+    Convert this into structured JSON:
 
     {raw}
 
@@ -164,9 +244,8 @@ def structured_vlm_analysis(image_path):
     }}
     """
 
-    # You can pass this to LLM later
     return {
         "raw": raw,
-        "structured_prompt": prompt
+        "structured_prompt": structured_prompt
     }
-  
+    
