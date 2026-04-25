@@ -1,32 +1,27 @@
 """
-PCB Parser Service (Production Safe)
+PCB Parser Service (NO OpenCV VERSION)
 
-Supports:
-- Image parsing (OCR-based)
-- Netlist parsing
-- Debug logging
-- Safe image handling (OpenCV + PIL fallback)
+- Uses PIL only (safe for Streamlit Cloud)
+- OCR supported (pytesseract)
+- Debug-friendly
+- Import-safe
 """
 
 import os
 import re
 from typing import Dict, List
 
-# Optional dependencies (fail-safe import)
+# Safe imports
 try:
-    import cv2
-    import numpy as np
     from PIL import Image
     import pytesseract
 except Exception:
-    cv2 = None
-    np = None
     Image = None
     pytesseract = None
 
 
 # ----------------------------------------
-# 🧠 MAIN ENTRY (FIXES YOUR ERROR)
+# 🧠 MAIN ENTRY
 # ----------------------------------------
 def parse_pcb(file_path: str) -> Dict:
     """
@@ -55,60 +50,39 @@ def parse_pcb(file_path: str) -> Dict:
 
 
 # ----------------------------------------
-# 🖼️ IMAGE PARSER (SAFE + DEBUG)
+# 🖼️ IMAGE PARSER (PIL ONLY)
 # ----------------------------------------
 def parse_from_image(image_path: str) -> Dict:
 
     debug = {}
 
     # Validate file
+    if not os.path.exists(image_path):
+        return {"error": f"File not found: {image_path}"}
+
     file_size = os.path.getsize(image_path)
     debug["file_size"] = file_size
 
     if file_size == 0:
         return {"error": "File is empty", "debug": debug}
 
-    img = None
-
-    # Try OpenCV
-    if cv2:
-        img = cv2.imread(image_path)
-        debug["opencv_loaded"] = img is not None
-    else:
-        debug["opencv"] = "not available"
-
-    # Fallback → PIL
-    if img is None and Image:
-        try:
-            pil_img = Image.open(image_path).convert("RGB")
-            img = np.array(pil_img)
-            if cv2:
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            debug["fallback"] = "PIL used"
-        except Exception as e:
-            return {
-                "error": f"PIL loading failed: {str(e)}",
-                "debug": debug
-            }
-
-    # Final check
-    if img is None:
+    # Load image with PIL
+    try:
+        img = Image.open(image_path).convert("RGB")
+        debug["image_mode"] = img.mode
+        debug["image_size"] = img.size
+    except Exception as e:
         return {
-            "error": f"Failed to load image: {image_path}",
+            "error": f"Failed to load image using PIL: {str(e)}",
             "debug": debug
         }
 
-    debug["shape"] = str(img.shape)
-
-    # Convert to grayscale
+    # Convert to grayscale (for OCR)
     try:
-        if cv2:
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = img
+        gray = img.convert("L")
     except Exception as e:
         return {
-            "error": f"cvtColor failed: {str(e)}",
+            "error": f"Grayscale conversion failed: {str(e)}",
             "debug": debug
         }
 
@@ -121,12 +95,12 @@ def parse_from_image(image_path: str) -> Dict:
         except Exception as e:
             debug["ocr_error"] = str(e)
     else:
-        debug["ocr"] = "not available"
+        debug["ocr"] = "pytesseract not installed"
 
     # Extract components
     components = extract_components_from_text(text)
 
-    # Build nets
+    # Build dummy nets
     nets = build_dummy_nets(components)
 
     return {
