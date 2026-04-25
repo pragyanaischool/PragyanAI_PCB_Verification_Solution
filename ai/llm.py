@@ -1,6 +1,7 @@
 import streamlit as st
 from langchain_groq import ChatGroq
-from langchain.schema import HumanMessage, SystemMessage
+#from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 import json
 import re
 
