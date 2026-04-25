@@ -23,10 +23,9 @@ huggingface-hub>=0.23.0
 # -----------------------------
 # 👁️ Computer Vision
 # -----------------------------
-opencv-python-headless>=4.9.0.80
+opencv-python-headless
 pillow
 numpy
-
 # YOLO (Ultralytics)
 ultralytics>=8.2.0
 
@@ -45,7 +44,6 @@ networkx
 # 🔤 OCR
 # -----------------------------
 pytesseract
-
 # -----------------------------
 # 📊 Data Handling
 # -----------------------------
