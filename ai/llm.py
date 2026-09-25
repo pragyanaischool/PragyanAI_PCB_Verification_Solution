@@ -6,18 +6,18 @@ import json
 import re
 
 # -----------------------------
-# 🔐 LOAD LLM (CACHED)
+# LOAD LLM (CACHED)
 # -----------------------------
 @st.cache_resource
 def get_llm():
     return ChatGroq(
-        model_name="llama-3.3-70b-versatile",
+        model_name="openai/gpt-oss-120b",
         temperature=0.2,
         groq_api_key=st.secrets["GROQ_API_KEY"]
     )
 
 # -----------------------------
-# 🧠 BASE INVOKE FUNCTION
+#  BASE INVOKE FUNCTION
 # -----------------------------
 def invoke_llm(system_prompt: str, user_prompt: str):
 
@@ -36,7 +36,7 @@ def invoke_llm(system_prompt: str, user_prompt: str):
 
 
 # -----------------------------
-# 🧾 JSON PARSER (ROBUST)
+#  JSON PARSER (ROBUST)
 # -----------------------------
 def extract_json(text):
 
@@ -57,7 +57,7 @@ def extract_json(text):
 
 
 # -----------------------------
-# 🧠 STRUCTURED ANALYSIS CALL
+#  STRUCTURED ANALYSIS CALL
 # -----------------------------
 def structured_analysis(context: str):
 
@@ -114,7 +114,7 @@ def power_analysis(context):
 
 
 # -----------------------------
-# 🔌 SIGNAL AGENT
+#  SIGNAL AGENT
 # -----------------------------
 def signal_analysis(context):
 
@@ -133,7 +133,7 @@ def signal_analysis(context):
 
 
 # -----------------------------
-# 🌡️ THERMAL AGENT
+#  THERMAL AGENT
 # -----------------------------
 def thermal_analysis(context):
 
@@ -151,7 +151,7 @@ def thermal_analysis(context):
 
 
 # -----------------------------
-# 🧩 LAYOUT AGENT
+#  LAYOUT AGENT
 # -----------------------------
 def layout_analysis(context):
 
@@ -170,7 +170,7 @@ def layout_analysis(context):
 
 
 # -----------------------------
-# 🧠 MASTER AGENT
+#  MASTER AGENT
 # -----------------------------
 def run_multi_agent_analysis(context):
 
@@ -184,7 +184,7 @@ def run_multi_agent_analysis(context):
 
 
 # -----------------------------
-# 💬 CHAT MODE (INTERACTIVE)
+#  CHAT MODE (INTERACTIVE)
 # -----------------------------
 def chat_with_pcb(context, user_query):
 
