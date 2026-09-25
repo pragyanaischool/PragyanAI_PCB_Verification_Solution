@@ -28,7 +28,7 @@ st.set_page_config(
 #  HEADER
 # ----------------------------------------
 st.title(" PragyanAI PCB Copilot")
-st.image("")
+st.image("PragyanAI_Transperent.png")
 st.caption("Multi-Agent AI for PCB Analysis (Vision + Graph + LLM + GNN)")
 
 # ----------------------------------------
