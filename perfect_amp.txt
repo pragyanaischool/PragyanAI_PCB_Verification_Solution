@@ -1,0 +1,30 @@
+* Perfect Common Emitter Amplifier Netlist
+* Components: Name | Node+ | Node- | Value/Model
+Vcc 1 0 DC 12V
+Vin 2 0 AC 0.1V SIN(0 0.1 1k)
+
+* Biasing and Load Resistors
+R1 1 3 100k
+R2 3 0 22k
+Rc 1 4 4.7k
+Re 5 0 1k
+
+* Coupling Capacitors
+Cin 2 3 10uF
+Cout 4 6 10uF
+
+* Transistor: Collector | Base | Emitter | Model Name
+Q1 4 3 5 2N2222
+
+* Component Model Definition
+.model 2N2222 NPN(Is=14.34f Xti=3 Eg=1.11 Vaf=74.03 Bf=255.9)
+
+* Simulation Command (Transient Analysis for 3 milliseconds)
+.tran 10u 3m
+
+* Control Block for Output Plotting
+.control
+run
+plot V(6) V(2)
+.endc
+.end
